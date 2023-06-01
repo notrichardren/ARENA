@@ -553,6 +553,63 @@ if MAIN:
 # %%
 
 if MAIN:
-    # YOUR CODE HERE - compute OV circuit
-
+    layer = 1
+    head_index = 4
+    full_OV_circuit = FactoredMatrix(model.W_E @ model.W_V[layer, head_index], model.W_O[layer, head_index] @ model.W_U)
     tests.test_full_OV_circuit(full_OV_circuit, model, layer, head_index)
+
+## @TODO Wait, you can just call this in TransformerLens?
+## Map of functions in TransformerLens
+
+# %%
+
+if MAIN:
+    # YOUR CODE HERE - get a random sample from the full OV circuit, so it can be plotted with `imshow`
+    indices = t.randint(low = 0, high = model.cfg.d_vocab, size = (200,))
+    full_OV_circuit_sample = full_OV_circuit[indices, indices].AB
+    imshow(
+        full_OV_circuit_sample,
+        labels={"x": "Input token", "y": "Logits on output token"},
+        title="Full OV circuit for copying head",
+        width=700,
+    )
+
+## @ TODO "When you index a factored matrix, you get back another factored matrix. So rather than explicitly calculating A[left_indices, :] @ B[:, left_indices], we can just write AB[left_indices, left_indices]." --> they overrided the bracket call
+
+# %%
+
+def top_1_acc(full_OV_circuit: FactoredMatrix) -> float:
+    '''
+    This should take the argmax of each column (ie over dim=0) and return the fraction of the time that's equal to the correct logit
+    '''
+    return (t.argmax(full_OV_circuit.AB, dim=1) == t.arange(full_OV_circuit.shape[0]).to(device)).float().mean()
+
+if MAIN:
+    print(f"Fraction of the time that the best logit is on the diagonal: {top_1_acc(full_OV_circuit):.4f}")
+
+## @ TODO Torch.mean versus (Tensor).mean(). Please dear god have there not be any subtle differences
+
+# %%
+
+# YOUR CODE HERE - compute the effective OV circuit, and run `top_1_acc` on it
+
+full_OV_circuit = FactoredMatrix(
+    model.W_E @ t.concat((model.W_V[1, 4], model.W_V[1, 10]), dim=1),
+    t.concat((model.W_O[1, 4], model.W_O[1,10]), dim=1) @ model.W_U
+)
+# %%
+
+def mask_scores(attn_scores: Float[Tensor, "query_nctx key_nctx"]):
+    '''Mask the attention scores so that tokens don't attend to previous tokens.'''
+    assert attn_scores.shape == (model.cfg.n_ctx, model.cfg.n_ctx)
+    mask = t.tril(t.ones_like(attn_scores)).bool()
+    neg_inf = t.tensor(-1.0e6).to(attn_scores.device)
+    masked_attn_scores = t.where(mask, attn_scores, neg_inf)
+    return masked_attn_scores
+
+
+
+if MAIN:
+    # YOUR CODE HERE - calculate the matrix `pos_by_pos_pattern` as described above
+    tests.test_pos_by_pos_pattern(pos_by_pos_pattern, model, layer, head_index)
+
