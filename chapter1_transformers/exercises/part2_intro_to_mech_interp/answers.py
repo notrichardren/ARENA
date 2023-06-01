@@ -516,3 +516,43 @@ if MAIN:
         width=900, height=400
     )
 # %%
+
+if MAIN:
+    A = t.randn(5, 2)
+    B = t.randn(2, 5)
+    AB = A @ B
+    AB_factor = FactoredMatrix(A, B)
+    print("Norms:")
+    print(AB.norm())
+    print(AB_factor.norm())
+
+    print(f"Right dimension: {AB_factor.rdim}, Left dimension: {AB_factor.ldim}, Hidden dimension: {AB_factor.mdim}")
+
+if MAIN:
+    print("Eigenvalues:")
+    print(t.linalg.eig(AB).eigenvalues)
+    print(AB_factor.eigenvalues)
+    print()
+    print("Singular Values:")
+    print(t.linalg.svd(AB).S)
+    print(AB_factor.S)
+    print("Full SVD:")
+    print(AB_factor.svd())
+
+if MAIN:
+    C = t.randn(5, 300)
+    ABC = AB @ C
+    ABC_factor = AB_factor @ C
+    print("Unfactored:", ABC.shape, ABC.norm())
+    print("Factored:", ABC_factor.shape, ABC_factor.norm())
+    print(f"Right dimension: {ABC_factor.rdim}, Left dimension: {ABC_factor.ldim}, Hidden dimension: {ABC_factor.mdim}")
+
+if MAIN:
+    AB_unfactored = AB_factor.AB
+    t.testing.assert_close(AB_unfactored, AB)
+# %%
+
+if MAIN:
+    # YOUR CODE HERE - compute OV circuit
+
+    tests.test_full_OV_circuit(full_OV_circuit, model, layer, head_index)
